@@ -22,9 +22,54 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager{
 
     @Override public void onLayoutChildren(RecyclerView.Recycler recycler, RecyclerView.State state) {
         detachAndScrapAttachedViews(recycler);
-        fill(recycler);
+        initialFill(recycler);
 //        fillDown(recycler);
 //        LinearLayoutManager
+    }
+
+    private void initialFill(RecyclerView.Recycler recycler){
+        int pos = 0;
+        boolean fillDown = true;
+        boolean fillRight = true;
+        int height = getHeight();
+        int viewTop = getPaddingTop();
+        int viewLeft = getPaddingLeft();
+        int itemCount = getItemCount();
+
+        int widthIncrement = 0;
+        int heightIncrement = 0;
+
+        while (fillDown && pos < itemCount){
+
+            View view = recycler.getViewForPosition(pos);
+            addView(view);
+            final int widthSpec = View.MeasureSpec.makeMeasureSpec(getHorizontalSpace(), View.MeasureSpec.AT_MOST);
+            final int heightSpec = View.MeasureSpec.makeMeasureSpec(getVerticalSpace(), View.MeasureSpec.AT_MOST);
+            measureChildWithDecorationsAndMargin(view, widthSpec, heightSpec);
+            int decoratedMeasuredWidth = getDecoratedMeasuredWidth(view);
+            int decoratedMeasuredHeight = getDecoratedMeasuredHeight(view);
+
+            if (viewLeft + decoratedMeasuredWidth <= getRightBorder()){
+                //fill right
+                widthIncrement = decoratedMeasuredWidth;
+                heightIncrement = 0;
+            }else {
+                //fill bottom
+                viewTop += decoratedMeasuredHeight;
+                widthIncrement = decoratedMeasuredWidth;
+//                viewTop = getDecoratedBottom(view);
+                fillDown = viewTop <= height;
+                viewLeft = getPaddingLeft();
+            }
+            layoutDecorated(view, viewLeft, viewTop, viewLeft + decoratedMeasuredWidth, viewTop + decoratedMeasuredHeight);
+            viewLeft += widthIncrement;
+            viewTop += heightIncrement;
+            pos++;
+        }
+    }
+
+    private int getRightBorder() {
+        return getWidth() - getPaddingRight();
     }
 
     private void fill(RecyclerView.Recycler recycler) {
@@ -91,7 +136,6 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager{
         }
 
     }
-
     private void fillDown(@Nullable View anchorView, RecyclerView.Recycler recycler){
         int anchorPosition = 0;
         int anchorTop = 0;
@@ -205,10 +249,67 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager{
 
     @Override
     public int scrollVerticallyBy(int dy, RecyclerView.Recycler recycler, RecyclerView.State state) {
-        int delta = scrollVerticallyInternal(dy);
-        offsetChildrenVertical(-delta);
-        fill(recycler);
-        return delta;
+//        int delta = scrollVerticallyInternal(dy);
+//        offsetChildrenVertical(-delta);
+////        fill(recycler);
+
+        /*if (getChildCount() == 0) {
+            return 0;
+        }
+
+        //Take top measurements from the top-left child
+        final View topView = getChildAt(0);
+        //Take bottom measurements from the bottom-right child.
+        final View bottomView = getChildAt(getChildCount()-1);
+
+        //Optimize the case where the entire data set is too small to scroll
+        int viewSpan = getDecoratedBottom(bottomView) - getDecoratedTop(topView);
+        if (viewSpan <= getVerticalSpace()) {
+            //We cannot scroll in either direction
+            return 0;
+        }
+
+        int delta;
+
+        if (dy > 0) { // Contents are scrolling up
+            //Check against bottom bound
+            if (isLastRow()) {
+                //If we've reached the last row, enforce limits
+//                int bottomOffset;
+//                if (rowOfIndex(getChildCount() - 1) >= (maxRowCount - 1)) {
+//                    //We are truly at the bottom, determine how far
+//                    bottomOffset = getVerticalSpace() - getDecoratedBottom(bottomView)
+//                            + getPaddingBottom();
+//                } else {
+//                    *//*
+//                     * Extra space added to account for allowing bottom space in the grid.
+//                     * This occurs when the overlap in the last row is not large enough to
+//                     * ensure that at least one element in that row isn't fully recycled.
+//                     *//*
+//                    bottomOffset = getVerticalSpace() - (getDecoratedBottom(bottomView)
+//                            + mDecoratedChildHeight) + getPaddingBottom();
+//                }
+
+                delta = Math.max(-dy, bottomOffset);
+            } else {
+                //No limits while the last row isn't visible
+                delta = -dy;
+            }
+        } else { // Contents are scrolling down
+            //Check against top bound
+            if (isFirstRow()) {
+//                int topOffset = -getDecoratedTop(topView) + getPaddingTop();
+
+                delta = Math.min(-dy, topOffset);
+            } else {
+                delta = -dy;
+            }
+        }
+
+        offsetChildrenVertical(delta);
+
+        return delta;*/
+        return 0;
     }
 
     private int scrollVerticallyInternal(int dy) {
@@ -217,8 +318,6 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager{
         if (childCount == 0){
             return 0;
         }
-
-//        LinearLayoutManager
 
         final View topView = getChildAt(0);
         final View bottomView = getChildAt(childCount - 1);
@@ -258,6 +357,15 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager{
     @Override public boolean canScrollHorizontally() {
         return false;
     }
+
+    private int getVerticalSpace() {
+        return getHeight() - getPaddingBottom() - getPaddingTop();
+    }
+
+    private int getHorizontalSpace() {
+        return getWidth() - getPaddingRight() - getPaddingLeft();
+    }
+
 
     /*
     private void fillUp(@Nullable View anchorView, RecyclerView.Recycler recycler) {

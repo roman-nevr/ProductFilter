@@ -35,6 +35,11 @@ public class StringAdapter extends RecyclerView.Adapter<StringAdapter.StringHold
         return strings.size();
     }
 
+    public void update(List<String> strings) {
+        this.strings = strings;
+        notifyDataSetChanged();
+    }
+
     class StringHolder extends RecyclerView.ViewHolder{
 
         @BindView(R.id.item) TextView item;
