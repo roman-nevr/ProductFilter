@@ -20,6 +20,11 @@ public class StringAdapter extends RecyclerView.Adapter<StringAdapter.StringHold
 
     public StringAdapter(List<String> strings) {
         this.strings = strings;
+        hasStableIds();
+    }
+
+    @Override public long getItemId(int position) {
+        return strings.hashCode();
     }
 
     @Override public StringHolder onCreateViewHolder(ViewGroup parent, int viewType) {

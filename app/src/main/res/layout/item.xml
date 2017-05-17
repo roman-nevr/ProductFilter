@@ -19,7 +19,7 @@
             android:id="@+id/item"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="dfkjfbkjsnfkjskjvskjdvbkjsdvkjskjdvkjsdvkjadkvjbdksjbvkjadbnvkjadkvbj"
+            android:text="dfkjfbkjsnfkjskjv skjdvbkjsdvkjskjdvk jsdvkjadkvjbdksjbvkjadbnvkjadkvbj"
             android:ellipsize="end"
             android:textSize="22dp"
             android:maxLines="1"
