@@ -249,6 +249,50 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager{
 
     @Override
     public int scrollVerticallyBy(int dy, RecyclerView.Recycler recycler, RecyclerView.State state) {
+
+        if (getChildCount() == 0){
+            return 0;
+        }
+
+        //Take top measurements from the top-left child
+        final View topView = getChildAt(0);
+        //Take bottom measurements from the bottom-right child.
+        final View bottomView = getChildAt(getChildCount()-1);
+
+        //Optimize the case where the entire data set is too small to scroll
+        int viewSpan = getDecoratedBottom(bottomView) - getDecoratedTop(topView);
+        if (viewSpan <= getVerticalSpace()) {
+            //We cannot scroll in either direction
+            return 0;
+        }
+
+        int delta;
+        if(dy > 0){// Contents are scrolling up
+            //Check against bottom bound
+            if (lastRow(bottomView)){
+                int bottomOffset = getVerticalSpace() - getDecoratedBottom(bottomView)
+                            + getPaddingBottom();
+                delta = Math.max(-dy, bottomOffset);
+            }else {
+                delta = -dy;
+            }
+        }else {// Contents are scrolling down
+            //Check against top bound
+            if (firstRow(topView)){
+                int topOffset = -getDecoratedTop(topView) + getPaddingTop();
+
+                delta = Math.min(-dy, topOffset);
+            }else {
+                delta = -dy;
+            }
+        }
+
+        offsetChildrenVertical(delta);
+
+        updateLayout(recycler, delta > 0);
+
+        return delta;
+
 //        int delta = scrollVerticallyInternal(dy);
 //        offsetChildrenVertical(-delta);
 ////        fill(recycler);
@@ -309,7 +353,59 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager{
         offsetChildrenVertical(delta);
 
         return delta;*/
-        return 0;
+    }
+
+    private void updateLayout(RecyclerView.Recycler recycler, boolean isScrollUp) {
+        if (isScrollUp){
+            recycleTopViews(recycler);
+            addBottomViews();
+        }else {
+            recycleBottomViews(recycler);
+
+        }
+
+    }
+
+    private void addBottomViews() {
+        int position = getChildCount() - 1;
+        View view = getChildAt(position);
+        if (getDecoratedBottom(view) > getBottomBorder()){
+            //add views
+            int adaptedPosition = getPosition(view);
+        }
+    }
+
+    private void recycleBottomViews(RecyclerView.Recycler recycler) {
+        int position = getChildCount() - 1;
+        View view = getChildAt(position);
+        while (getDecoratedTop(view) > getBottomBorder()) {
+            detachView(view);
+            recycler.recycleView(view);
+            position++;
+        }
+    }
+
+    private void recycleTopViews(RecyclerView.Recycler recycler) {
+        int position = 0;
+        View view = getChildAt(position);
+        while (getDecoratedBottom(view) < 0){
+            detachView(view);
+            recycler.recycleView(view);
+            position++;
+        }
+    }
+
+    private int getBottomBorder() {
+        return getHorizontalSpace() + getPaddingTop();
+    }
+
+    private boolean firstRow(View view) {
+        return getPosition(view) == 0;
+    }
+
+    private boolean lastRow(View view) {
+        int position = getPosition(view);
+        return position == getItemCount() - 1;
     }
 
     private int scrollVerticallyInternal(int dy) {
