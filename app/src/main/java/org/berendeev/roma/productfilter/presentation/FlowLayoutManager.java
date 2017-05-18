@@ -2,6 +2,7 @@ package org.berendeev.roma.productfilter.presentation;
 
 import android.graphics.Point;
 import android.graphics.Rect;
+import android.support.v7.appcompat.BuildConfig;
 import android.support.v7.widget.RecyclerView;
 import android.view.View;
 
@@ -26,23 +27,26 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager{
     }
 
     private void initialFill(RecyclerView.Recycler recycler){
-        int pos = 0;
         Point nextPoint = new Point(getPaddingLeft(), getPaddingTop());
-        int itemCount = getItemCount();
 
         widthSpec = View.MeasureSpec.makeMeasureSpec(getHorizontalSpace(), View.MeasureSpec.AT_MOST);
         heightSpec = View.MeasureSpec.makeMeasureSpec(getVerticalSpace(), View.MeasureSpec.AT_MOST);
 
-        fillDownFrom(pos, nextPoint, itemCount, recycler);
+        fillDownFrom(0, nextPoint, recycler);
     }
 
-    private Point fillDownFrom(int position, Point nextPoint, int itemCount, RecyclerView.Recycler recycler){
+    private Point fillDownFrom(int position, Point nextPoint, RecyclerView.Recycler recycler){
         boolean fillDown = true;
+        int itemCount = getItemCount();
         while (fillDown && position < itemCount){
 
             View view = placeViewOnLayout(recycler, position);
             nextPoint = postOnLayout(view, nextPoint.x, nextPoint.y);
-            fillDown = getDecoratedBottom(view) <= getBottomBorder();
+            fillDown = nextPoint.y <= getBottomBorder();
+            if (!fillDown){
+                detachView(view);
+                recycler.recycleView(view);
+            }
             position++;
         }
         return nextPoint;
@@ -80,10 +84,6 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager{
         }
         layoutDecorated(view, viewLeft, viewTop, viewLeft + decoratedMeasuredWidth, viewTop + decoratedMeasuredHeight);
         return new Point(viewLeft + widthIncrement, viewTop + heightIncrement);
-    }
-
-    private int getRightBorder() {
-        return getWidth() - getPaddingRight();
     }
 
     private void measureChildWithDecorationsAndMargin(View child, int widthSpec, int heightSpec) {
@@ -130,71 +130,45 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager{
         }
 
         int delta;
-        if(dy > 0){
-            if (lastRow(bottomView)){
-                int bottomOffset = getVerticalSpace() - getDecoratedBottom(bottomView)
-                            + getPaddingBottom();
-                delta = Math.max(-dy, bottomOffset);
-            }else {
-                delta = -dy;
-            }
-        }else {
-            if (firstRow(topView)){
-                int topOffset = -getDecoratedTop(topView) + getPaddingTop();
 
-                delta = Math.min(-dy, topOffset);
-            }else {
-                delta = -dy;
-            }
+        delta = scrollBy(recycler, dy);
+
+        if (delta < 0 && BuildConfig.DEBUG){
+            throw new IllegalArgumentException("delta negative");
         }
-
-        offsetChildrenVertical(delta);
-
-        updateLayout(recycler, delta < 0);
 
         return delta;
     }
 
-    private void updateLayout(RecyclerView.Recycler recycler, boolean isScrollUp) {
+    private int scrollBy(RecyclerView.Recycler recycler, int dy) {
+        offsetChildrenVertical(-dy);
+
+        boolean isScrollUp = dy > 0;
+        int overScroll;
         if (isScrollUp){
-            recycleTopViews(recycler);
-            int overScroll = addBottomViews(recycler);
+            overScroll = addBottomViews(recycler);
             offsetChildrenVertical(overScroll);
+            recycleTopViews(recycler);
         }else {
+            overScroll = addTopViews(recycler);
+            offsetChildrenVertical(overScroll);
             recycleBottomViews(recycler);
-            addTopViews(recycler);
         }
+        return dy - overScroll;
 
     }
 
-    private void addTopViews(RecyclerView.Recycler recycler) {
-        View view = getChildAt(0);
-        if (getDecoratedTop(view) > 0){
-            int adaptedPosition = getPosition(view) - 1;
-            addTopRowFrom(adaptedPosition, recycler, getDecoratedTop(view));
+    private Point fillUpFrom(int position, Point nextPoint, RecyclerView.Recycler recycler){
+        boolean fillUp = true;
+        while (fillUp && position >= 0){
+            nextPoint = addTopRowFrom(position, recycler, nextPoint.y);
+            fillUp = nextPoint.y > getTopBorder();
+            position = getPosition(getChildAt(0)) - 1;
         }
-//        LinearLayoutManager layoutManager;
-//        layoutManager.scrollVerticallyBy()
+        return nextPoint;
     }
 
-    /*
-    returns overflight
-     */
-
-    private int addBottomViews(RecyclerView.Recycler recycler) {
-        int adapterPosition = lastViewAdapterPosition() + 1;
-        int itemCount = getItemCount();
-        Point nextPoint = new Point(getPaddingLeft(), lastViewDecoratedBottom());
-        nextPoint = fillDownFrom(adapterPosition, nextPoint, itemCount, recycler);
-
-        if (nextPoint.y < getBottomBorder()){
-            return getBottomBorder() - nextPoint.y;
-        }else {
-            return 0;
-        }
-    }
-
-    private void addTopRowFrom(int adaptedPosition, RecyclerView.Recycler recycler, int fromHeight) {
+    private Point addTopRowFrom(int adaptedPosition, RecyclerView.Recycler recycler, int fromHeight) {
         boolean fillLeft = true;
         int width = 0;
         List<View> views = new LinkedList<>();
@@ -214,24 +188,41 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager{
         for (View view : views) {
             nextPoint = postOnLayout(view, nextPoint.x, nextPoint.y);
         }
+        return nextPoint;
     }
 
-    private void addBottomRow(int adapterPosition, RecyclerView.Recycler recycler, int height) {
-        boolean fillRight = true;
-        int width = 0;
-        Point nextPoint = new Point(width, height);
-        while (fillRight &&adapterPosition < getItemCount()){
-            View view = placeViewOnLayout(recycler, adapterPosition);
-            nextPoint = postOnLayout(view, nextPoint.x, nextPoint.y);
+    /*
+    returns overscroll
+     */
+    private int addBottomViews(RecyclerView.Recycler recycler) {
+        int adapterPosition = bottomViewAdapterPosition() + 1;
+        Point nextPoint = new Point(getPaddingLeft(), bottomViewDecoratedBottom());
+        if(nextPoint.y < getBottomBorder()){
+            nextPoint = fillDownFrom(adapterPosition, nextPoint, recycler);
+            if (nextPoint.y < getBottomBorder()){
+                return getBottomBorder() - nextPoint.y;
+            }else {
+                return 0;
+            }
+        }else {
+            return 0;
         }
+
     }
 
-    private int lastViewAdapterPosition(){
-        return getPosition(getChildAt(getChildCount() - 1));
-    }
-
-    private int lastViewDecoratedBottom(){
-        return getDecoratedBottom(getChildAt(getChildCount() - 1));
+    private int addTopViews(RecyclerView.Recycler recycler) {
+        int adapterPosition = getPosition(getChildAt(0));
+        Point nextPoint = getTopRightPoint(getChildAt(0));
+        if (nextPoint.y > getTopBorder()){
+            nextPoint = fillUpFrom(adapterPosition - 1, nextPoint, recycler);
+            if (nextPoint.y > getTopBorder()){
+                return getTopBorder() - nextPoint.y;
+            }else {
+                return 0;
+            }
+        }else {
+            return 0;
+        }
     }
 
     private void recycleBottomViews(RecyclerView.Recycler recycler) {
@@ -254,17 +245,24 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager{
         }
     }
 
+    private int bottomViewAdapterPosition(){
+        return getPosition(getChildAt(getChildCount() - 1));
+    }
+
+    private int getRightBorder() {
+        return getWidth() - getPaddingRight();
+    }
+
+    private int bottomViewDecoratedBottom(){
+        return getDecoratedBottom(getChildAt(getChildCount() - 1));
+    }
+
     private int getBottomBorder() {
         return getVerticalSpace() - getPaddingTop();
     }
 
-    private boolean firstRow(View view) {
-        return getPosition(view) == 0;
-    }
-
-    private boolean lastRow(View view) {
-        int position = getPosition(view);
-        return position == getItemCount() - 1;
+    private int getTopBorder(){
+        return getPaddingTop();
     }
 
     @Override public boolean canScrollHorizontally() {
