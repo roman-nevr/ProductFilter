@@ -5,7 +5,10 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="org.berendeev.roma.productfilter.MainActivity">
+    android:id="@+id/main_layout"
+    android:focusableInTouchMode="true"
+    tools:context="org.berendeev.roma.productfilter.MainActivity"
+    >
 
     <android.support.v7.widget.Toolbar
         android:id="@+id/toolbar"
@@ -31,6 +34,8 @@
                 app:layout_constraintRight_toLeftOf="@+id/clear_button"
                 android:layout_marginRight="8dp"
                 android:layout_marginLeft="32dp"
+                android:imeOptions="actionDone|flagNoExtractUi|flagNoFullscreen"
+                android:inputType="text"
                 app:layout_constraintLeft_toLeftOf="parent"
                 app:layout_constraintBottom_toBottomOf="parent"
                 android:layout_marginBottom="8dp"
@@ -59,7 +64,8 @@
         android:id="@+id/recycler_view"
         android:layout_width="0dp"
         android:layout_height="0dp"
-        android:layout_margin="8dp"
+        android:layout_marginLeft="8dp"
+        android:layout_marginRight="8dp"
         app:layout_constraintRight_toRightOf="parent"
         app:layout_constraintLeft_toLeftOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"

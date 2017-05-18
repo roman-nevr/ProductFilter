@@ -1,18 +1,25 @@
 package org.berendeev.roma.productfilter.presentation;
 
+import android.graphics.Point;
 import android.graphics.Rect;
-import android.support.annotation.Nullable;
-import android.support.v7.widget.GridLayoutManager;
-import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.CardView;
 import android.support.v7.widget.RecyclerView;
+import android.util.Log;
 import android.util.SparseArray;
 import android.view.View;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
-import java.util.HashMap;
+import java.util.ArrayList;
+import java.util.LinkedList;
+import java.util.List;
 
 public class FlowLayoutManager extends RecyclerView.LayoutManager{
 
     private SparseArray<View> viewCache = new SparseArray<>();
+    private int heightSpec;
+    private int widthSpec;
+
 
     @Override public RecyclerView.LayoutParams generateDefaultLayoutParams() {
         return new RecyclerView.LayoutParams(
@@ -23,201 +30,69 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager{
     @Override public void onLayoutChildren(RecyclerView.Recycler recycler, RecyclerView.State state) {
         detachAndScrapAttachedViews(recycler);
         initialFill(recycler);
-//        fillDown(recycler);
-//        LinearLayoutManager
     }
 
     private void initialFill(RecyclerView.Recycler recycler){
         int pos = 0;
-        boolean fillDown = true;
-        boolean fillRight = true;
-        int height = getHeight();
-        int viewTop = getPaddingTop();
-        int viewLeft = getPaddingLeft();
+        Point nextPoint = new Point(getPaddingLeft(), getPaddingTop());
         int itemCount = getItemCount();
+
+        widthSpec = View.MeasureSpec.makeMeasureSpec(getHorizontalSpace(), View.MeasureSpec.AT_MOST);
+        heightSpec = View.MeasureSpec.makeMeasureSpec(getVerticalSpace(), View.MeasureSpec.AT_MOST);
+
+        fillFrom(pos, nextPoint, itemCount, recycler);
+    }
+
+    private void fillFrom(int position, Point nextPoint, int itemCount, RecyclerView.Recycler recycler){
+        boolean fillDown = true;
+        while (fillDown && position < itemCount){
+
+            View view = placeViewOnLayout(recycler, position);
+            nextPoint = postOnLayout(view, nextPoint.x, nextPoint.y);
+            fillDown = getDecoratedBottom(view) <= getBottomBorder();
+            position++;
+        }
+    }
+
+    private View placeViewOnLayout(RecyclerView.Recycler recycler, int pos){
+        View view = recycler.getViewForPosition(pos);
+        addView(view);
+        measureChildWithDecorationsAndMargin(view, widthSpec, heightSpec);
+        return view;
+    }
+
+    private View placeViewOnLayout(RecyclerView.Recycler recycler, int pos, int where){
+        View view = recycler.getViewForPosition(pos);
+        addView(view, where);
+        measureChildWithDecorationsAndMargin(view, widthSpec, heightSpec);
+        return view;
+    }
+
+    private Point postOnLayout(View view, int viewLeft, int viewTop){
+
+        int decoratedMeasuredWidth = getDecoratedMeasuredWidth(view);
+        int decoratedMeasuredHeight = getDecoratedMeasuredHeight(view);
 
         int widthIncrement = 0;
         int heightIncrement = 0;
 
-        while (fillDown && pos < itemCount){
-
-            View view = recycler.getViewForPosition(pos);
-            addView(view);
-            final int widthSpec = View.MeasureSpec.makeMeasureSpec(getHorizontalSpace(), View.MeasureSpec.AT_MOST);
-            final int heightSpec = View.MeasureSpec.makeMeasureSpec(getVerticalSpace(), View.MeasureSpec.AT_MOST);
-            measureChildWithDecorationsAndMargin(view, widthSpec, heightSpec);
-            int decoratedMeasuredWidth = getDecoratedMeasuredWidth(view);
-            int decoratedMeasuredHeight = getDecoratedMeasuredHeight(view);
-
-            if (viewLeft + decoratedMeasuredWidth <= getRightBorder()){
-                //fill right
-                widthIncrement = decoratedMeasuredWidth;
-                heightIncrement = 0;
-            }else {
-                //fill bottom
-                viewTop += decoratedMeasuredHeight;
-                widthIncrement = decoratedMeasuredWidth;
-//                viewTop = getDecoratedBottom(view);
-                fillDown = viewTop <= height;
-                viewLeft = getPaddingLeft();
-            }
-            layoutDecorated(view, viewLeft, viewTop, viewLeft + decoratedMeasuredWidth, viewTop + decoratedMeasuredHeight);
-            viewLeft += widthIncrement;
-            viewTop += heightIncrement;
-            pos++;
+        if (viewLeft + decoratedMeasuredWidth <= getRightBorder()){
+            //fill right
+            widthIncrement = decoratedMeasuredWidth;
+            heightIncrement = 0;
+        }else {
+            //fill bottom
+            viewTop += decoratedMeasuredHeight;
+            widthIncrement = decoratedMeasuredWidth;
+            viewLeft = getPaddingLeft();
         }
+        layoutDecorated(view, viewLeft, viewTop, viewLeft + decoratedMeasuredWidth, viewTop + decoratedMeasuredHeight);
+        return new Point(viewLeft + widthIncrement, viewTop + heightIncrement);
     }
 
     private int getRightBorder() {
         return getWidth() - getPaddingRight();
     }
-
-    private void fill(RecyclerView.Recycler recycler) {
-        View anchorView = getAnchorView();
-        viewCache.clear();
-
-        //Помещаем вьюшки в кэш и...
-        for (int i = 0, cnt = getChildCount(); i < cnt; i++) {
-            View view = getChildAt(i);
-            int pos = getPosition(view);
-            viewCache.put(pos, view);
-        }
-
-        //... и удалям из лэйаута
-        for (int i = 0; i < viewCache.size(); i++) {
-            detachView(viewCache.valueAt(i));
-        }
-
-        fillUp(anchorView, recycler);
-        fillDown(anchorView, recycler);
-
-        //отправляем в корзину всё, что не потребовалось в этом цикле лэйаута
-        //эти вьюшки или ушли за экран или не понадобились, потому что соответствующие элементы
-        //удалились из адаптера
-        for (int i=0; i < viewCache.size(); i++) {
-            recycler.recycleView(viewCache.valueAt(i));
-        }
-    }
-
-    private void fillUp(View anchorView, RecyclerView.Recycler recycler) {
-        int anchorPos = 0;
-        int anchorTop = 0;
-        if (anchorView != null){
-            anchorPos = getPosition(anchorView);
-            anchorTop = getDecoratedTop(anchorView);
-//            anchorTop = a
-        }
-
-        boolean fillUp = true;
-        int pos = anchorPos - 1;
-        int viewBottom = anchorTop; //нижняя граница следующей вьюшки будет начитаться от верхней границы предыдущей
-
-        final int widthSpec = View.MeasureSpec.makeMeasureSpec(getWidth(), View.MeasureSpec.AT_MOST);
-        final int heightSpec = View.MeasureSpec.makeMeasureSpec(getHeight(), View.MeasureSpec.AT_MOST);
-        while (fillUp && pos >= 0) {
-            View view = viewCache.get(pos); //проверяем кэш
-            if (view == null){
-                //если вьюшки нет в кэше - просим у recycler новую, измеряем и лэйаутим её
-                view = recycler.getViewForPosition(pos);
-                addView(view, 0);
-//                measureChildWithDecorationsAndMargin(view, widthSpec, heightSpec);
-                measureChildWithMargins(view, 0, 0);
-                int decoratedMeasuredWidth = getDecoratedMeasuredWidth(view);
-                layoutDecorated(view, 0, viewBottom - view.getMeasuredHeight(), decoratedMeasuredWidth, viewBottom);
-            } else {
-                //если вьюшка есть в кэше - просто аттачим её обратно
-                //нет необходимости проводить measure/layout цикл.
-                attachView(view);
-                viewCache.remove(pos);
-            }
-            viewBottom = getDecoratedTop(view);
-            fillUp = viewBottom > 0;
-            pos--;
-        }
-
-    }
-    private void fillDown(@Nullable View anchorView, RecyclerView.Recycler recycler){
-        int anchorPosition = 0;
-        int anchorTop = 0;
-        if (anchorView != null){
-            anchorPosition = getPosition(anchorView);
-            anchorTop = getDecoratedTop(anchorView);
-        }
-        int position = anchorPosition;
-        boolean fillDown = true;
-        int height = getHeight();
-        int viewTop = anchorTop;
-        int itemCount = getItemCount();
-
-        final int widthSpec = View.MeasureSpec.makeMeasureSpec(getWidth(), View.MeasureSpec.AT_MOST);
-        final int heightSpec = View.MeasureSpec.makeMeasureSpec(getHeight(), View.MeasureSpec.AT_MOST);
-
-        while (fillDown && position < itemCount){
-            View view = viewCache.get(position);
-            if (view == null){
-                view = recycler.getViewForPosition(position);
-                addView(view);
-//                measureChildWithDecorationsAndMargin(view, widthSpec, heightSpec);
-                measureChildWithMargins(view, 0, 0);
-                int decoratedMeasuredWidth = getDecoratedMeasuredWidth(view);
-                layoutDecorated(view, 0, viewTop, view.getMeasuredWidth(), viewTop + view.getMeasuredHeight());
-            } else {
-                attachView(view);
-                viewCache.remove(position);
-            }
-            viewTop = getDecoratedBottom(view);
-            fillDown = viewTop <= height;
-            position++;
-
-
-//            addView(view);
-//            //Todo find out about decoration size
-//            measureChildWithMargins(view, 0, 0);
-//            layoutDecorated(view, 0, viewTop, view.getMeasuredWidth(), viewTop + view.getMeasuredHeight());
-//            viewTop = getDecoratedBottom(view);
-//            fillDown = viewTop > height;
-//            position++;
-        }
-    }
-
-    /*
-    final int widthSpec = View.MeasureSpec.makeMeasureSpec(getWidth(), View.MeasureSpec.EXACTLY);
-    final int heightSpec = View.MeasureSpec.makeMeasureSpec(getHeight(), View.MeasureSpec.EXACTLY);
-    measureChildWithDecorationsAndMargin(view, widthSpec, heightSpec);
-     */
-
-    //метод вернет вьюшку с максимальной видимой площадью
-    private View getAnchorView() {
-        int childCount = getChildCount();
-        HashMap<Integer, View> viewsOnScreen = new HashMap<>();
-        Rect mainRect = new Rect(0, 0, getWidth(), getHeight());
-        for (int i = 0; i < childCount; i++) {
-            View view = getChildAt(i);
-            int top = getDecoratedTop(view);
-            int bottom = getDecoratedBottom(view);
-            int left = getDecoratedLeft(view);
-            int right = getDecoratedRight(view);
-            Rect viewRect = new Rect(left, top, right, bottom);
-            boolean intersect = viewRect.intersect(mainRect);
-            if (intersect){
-                int square = viewRect.width() * viewRect.height();
-                viewsOnScreen.put(square, view);
-            }
-        }
-        if (viewsOnScreen.isEmpty()){
-            return null;
-        }
-        Integer maxSquare = null;
-        for (Integer square : viewsOnScreen.keySet()) {
-            if (maxSquare == null){
-                maxSquare = square;
-            } else {
-                maxSquare = Math.max(maxSquare, square);
-            }
-        }
-        return viewsOnScreen.get(maxSquare);
-    }
-
 
     private void measureChildWithDecorationsAndMargin(View child, int widthSpec, int heightSpec) {
         Rect decorRect = new Rect();
@@ -289,7 +164,7 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager{
 
         offsetChildrenVertical(delta);
 
-        updateLayout(recycler, delta > 0);
+        updateLayout(recycler, delta < 0);
 
         return delta;
 
@@ -356,22 +231,72 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager{
     }
 
     private void updateLayout(RecyclerView.Recycler recycler, boolean isScrollUp) {
+        logChilds();
         if (isScrollUp){
             recycleTopViews(recycler);
-            addBottomViews();
+            addBottomViews(recycler);
         }else {
             recycleBottomViews(recycler);
-
+            addTopViews(recycler);
         }
 
     }
 
-    private void addBottomViews() {
+    private void addTopViews(RecyclerView.Recycler recycler) {
+        View view = getChildAt(0);
+        if (getDecoratedTop(view) > 0){
+            int adaptedPosition = getPosition(view) - 1;
+            addTopRowFrom(adaptedPosition, recycler, getDecoratedTop(view));
+        }
+    }
+
+    private void addTopRowFrom(int adaptedPosition, RecyclerView.Recycler recycler, int fromHeight) {
+        boolean fillLeft = true;
+        int width = 0;
+        List<View> views = new LinkedList<>();
+        while (fillLeft && adaptedPosition >= 0){
+            View view = placeViewOnLayout(recycler, adaptedPosition, 0);
+            width += getDecoratedMeasuredWidth(view);
+            fillLeft = width <= getHorizontalSpace();
+            if (fillLeft){
+                views.add(0, view);
+            }else {
+                detachView(view);
+                recycler.recycleView(view);
+            }
+            adaptedPosition --;
+        }
+        Point nextPoint = new Point(getPaddingLeft(), fromHeight - getDecoratedMeasuredHeight(views.get(0)));
+        for (View view : views) {
+            nextPoint = postOnLayout(view, nextPoint.x, nextPoint.y);
+        }
+    }
+
+    private void logChilds(){
+        int childsCount = getChildCount();
+        List<String> list = new ArrayList<>();
+        for (int index = 0; index < childsCount; index++) {
+
+            System.out.print(getChildText(index));
+        }
+        System.out.println("");
+
+    }
+
+    private String getChildText(int index){
+        String childText = ((TextView)((CardView) ((LinearLayout) getChildAt(index)).getChildAt(0)).getChildAt(0)).getText().toString();
+        return childText;
+    }
+
+    private void addBottomViews(RecyclerView.Recycler recycler) {
         int position = getChildCount() - 1;
         View view = getChildAt(position);
         if (getDecoratedBottom(view) > getBottomBorder()){
             //add views
             int adaptedPosition = getPosition(view);
+            Point nextPoint = getTopRightPoint(view);
+
+            fillFrom(adaptedPosition + 1, nextPoint, getItemCount(), recycler);
         }
     }
 
@@ -381,22 +306,23 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager{
         while (getDecoratedTop(view) > getBottomBorder()) {
             detachView(view);
             recycler.recycleView(view);
-            position++;
+            position--;
+            view = getChildAt(position);
         }
     }
 
     private void recycleTopViews(RecyclerView.Recycler recycler) {
-        int position = 0;
-        View view = getChildAt(position);
+//        int position = 0;
+        View view = getChildAt(0);
         while (getDecoratedBottom(view) < 0){
             detachView(view);
             recycler.recycleView(view);
-            position++;
+            view = getChildAt(0);
         }
     }
 
     private int getBottomBorder() {
-        return getHorizontalSpace() + getPaddingTop();
+        return getVerticalSpace() - getPaddingTop();
     }
 
     private boolean firstRow(View view) {
@@ -462,7 +388,9 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager{
         return getWidth() - getPaddingRight() - getPaddingLeft();
     }
 
-
+    private Point getTopRightPoint(View view){
+        return new Point(getDecoratedRight(view), getDecoratedTop(view));
+    }
     /*
     private void fillUp(@Nullable View anchorView, RecyclerView.Recycler recycler) {
         int anchorPos = 0;

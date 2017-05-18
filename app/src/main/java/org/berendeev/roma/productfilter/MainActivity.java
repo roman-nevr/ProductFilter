@@ -2,25 +2,26 @@ package org.berendeev.roma.productfilter;
 
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
-import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.text.Editable;
 import android.text.TextWatcher;
+import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageButton;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 
+import org.berendeev.roma.productfilter.domain.entity.Product;
 import org.berendeev.roma.productfilter.filter.TextFilter;
 import org.berendeev.roma.productfilter.filter.TextFilterImpl;
 import org.berendeev.roma.productfilter.presentation.FlowLayoutManager;
 import org.berendeev.roma.productfilter.presentation.StringAdapter;
 
 import java.lang.reflect.Type;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -29,8 +30,9 @@ public class MainActivity extends AppCompatActivity {
 
     @BindView(R.id.filter) EditText filter;
     @BindView(R.id.recycler_view) RecyclerView recyclerView;
+    @BindView(R.id.clear_button) ImageButton clearButton;
     private StringAdapter adapter;
-    private List<String> strings;
+    private List<Product> productList;
     private TextFilter textFilter;
 
     @Override
@@ -40,22 +42,34 @@ public class MainActivity extends AppCompatActivity {
         ButterKnife.bind(this);
 
         FlowLayoutManager layoutManager = new FlowLayoutManager();
-        strings = createList();
+        productList = createList();
         textFilter = new TextFilterImpl();
 
         recyclerView.setLayoutManager(layoutManager);
+
         initFilter();
-        setList(strings);
+        setList(productList);
+        initClearButton();
+    }
+
+    private void initClearButton() {
+        clearButton.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                filter.setText("");
+                filter.requestFocus();
+            }
+        });
     }
 
     private void initFilter(){
+        filter.clearFocus();
         filter.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int start, int count, int after) {
 
             }
 
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
-                setList(textFilter.filter(strings, s.toString()));
+                setList(textFilter.filter(productList, s.toString()));
             }
 
             @Override public void afterTextChanged(Editable s) {
@@ -64,21 +78,21 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    private void setList(List<String> strings){
+    private void setList(List<Product> strings){
         if(adapter == null){
-            adapter = new StringAdapter(strings);
+            adapter = new StringAdapter(strings, getApplicationContext());
             recyclerView.setAdapter(adapter);
         }else {
             adapter.update(strings);
         }
     }
 
-    private List<String> createList(){
+    private List<Product> createList(){
         Gson gson = new GsonBuilder().create();
 
-        Type type = new TypeToken<List<String>>() {}.getType();
+        Type type = new TypeToken<List<Product>>() {}.getType();
 
-        return gson.fromJson(Json.json, type);
+        return gson.fromJson(Json.productsJson, type);
 
     }
 }
