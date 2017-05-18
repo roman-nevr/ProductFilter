@@ -53,7 +53,7 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(layoutManager);
 
         initFilter();
-//        setList(productList);
+        setList(productList);
         initClearButton();
     }
 
@@ -74,13 +74,14 @@ public class MainActivity extends AppCompatActivity {
             }
 
             @Override public void onTextChanged(CharSequence s, int start, int before, int count) {
-                if(s.length() == 0){
-                    showHint();
-                    setList(new ArrayList<Product>());
-                }else {
-                    hideHint();
-                    setList(productsFilter.filter(productList, s.toString()));
-                }
+//                if(s.length() == 0){
+//                    showHint();
+//                    setList(new ArrayList<Product>());
+//                }else {
+//                    hideHint();
+//                    setList(productsFilter.filter(productList, s.toString()));
+//                }
+                setList(productsFilter.filter(productList, s.toString()));
             }
 
             @Override public void afterTextChanged(Editable s) {

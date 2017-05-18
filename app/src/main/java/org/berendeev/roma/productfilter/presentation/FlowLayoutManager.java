@@ -33,10 +33,10 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager{
         widthSpec = View.MeasureSpec.makeMeasureSpec(getHorizontalSpace(), View.MeasureSpec.AT_MOST);
         heightSpec = View.MeasureSpec.makeMeasureSpec(getVerticalSpace(), View.MeasureSpec.AT_MOST);
 
-        fillFrom(pos, nextPoint, itemCount, recycler);
+        fillDownFrom(pos, nextPoint, itemCount, recycler);
     }
 
-    private void fillFrom(int position, Point nextPoint, int itemCount, RecyclerView.Recycler recycler){
+    private Point fillDownFrom(int position, Point nextPoint, int itemCount, RecyclerView.Recycler recycler){
         boolean fillDown = true;
         while (fillDown && position < itemCount){
 
@@ -45,6 +45,7 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager{
             fillDown = getDecoratedBottom(view) <= getBottomBorder();
             position++;
         }
+        return nextPoint;
     }
 
     private View placeViewOnLayout(RecyclerView.Recycler recycler, int pos){
@@ -157,7 +158,8 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager{
     private void updateLayout(RecyclerView.Recycler recycler, boolean isScrollUp) {
         if (isScrollUp){
             recycleTopViews(recycler);
-            addBottomViews(recycler);
+            int overScroll = addBottomViews(recycler);
+            offsetChildrenVertical(overScroll);
         }else {
             recycleBottomViews(recycler);
             addTopViews(recycler);
@@ -170,6 +172,25 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager{
         if (getDecoratedTop(view) > 0){
             int adaptedPosition = getPosition(view) - 1;
             addTopRowFrom(adaptedPosition, recycler, getDecoratedTop(view));
+        }
+//        LinearLayoutManager layoutManager;
+//        layoutManager.scrollVerticallyBy()
+    }
+
+    /*
+    returns overflight
+     */
+
+    private int addBottomViews(RecyclerView.Recycler recycler) {
+        int adapterPosition = lastViewAdapterPosition() + 1;
+        int itemCount = getItemCount();
+        Point nextPoint = new Point(getPaddingLeft(), lastViewDecoratedBottom());
+        nextPoint = fillDownFrom(adapterPosition, nextPoint, itemCount, recycler);
+
+        if (nextPoint.y < getBottomBorder()){
+            return getBottomBorder() - nextPoint.y;
+        }else {
+            return 0;
         }
     }
 
@@ -195,14 +216,22 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager{
         }
     }
 
-    private void addBottomViews(RecyclerView.Recycler recycler) {
-        int position = getChildCount() - 1;
-        View view = getChildAt(position);
-        if (getDecoratedBottom(view) > getBottomBorder()){
-            int adaptedPosition = getPosition(view);
-            Point nextPoint = getTopRightPoint(view);
-            fillFrom(adaptedPosition + 1, nextPoint, getItemCount(), recycler);
+    private void addBottomRow(int adapterPosition, RecyclerView.Recycler recycler, int height) {
+        boolean fillRight = true;
+        int width = 0;
+        Point nextPoint = new Point(width, height);
+        while (fillRight &&adapterPosition < getItemCount()){
+            View view = placeViewOnLayout(recycler, adapterPosition);
+            nextPoint = postOnLayout(view, nextPoint.x, nextPoint.y);
         }
+    }
+
+    private int lastViewAdapterPosition(){
+        return getPosition(getChildAt(getChildCount() - 1));
+    }
+
+    private int lastViewDecoratedBottom(){
+        return getDecoratedBottom(getChildAt(getChildCount() - 1));
     }
 
     private void recycleBottomViews(RecyclerView.Recycler recycler) {
