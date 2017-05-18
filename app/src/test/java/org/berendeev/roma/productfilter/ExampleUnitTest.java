@@ -5,8 +5,8 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.reflect.TypeToken;
 
 import org.berendeev.roma.productfilter.domain.entity.Product;
-import org.berendeev.roma.productfilter.filter.TextFilter;
-import org.berendeev.roma.productfilter.filter.TextFilterImpl;
+import org.berendeev.roma.productfilter.filter.ProductsFilter;
+import org.berendeev.roma.productfilter.filter.ProductsFilterImpl;
 import org.junit.Test;
 
 import java.lang.reflect.Type;
@@ -49,7 +49,7 @@ public class ExampleUnitTest {
 
         List<String> strings = gson.fromJson(Json.json, type);
 
-        TextFilter filter = new TextFilterImpl();
+        ProductsFilter filter = new ProductsFilterImpl();
 
         System.out.println(filter.filter(strings, "мор"));
     }

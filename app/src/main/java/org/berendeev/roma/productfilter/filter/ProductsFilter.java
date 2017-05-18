@@ -4,6 +4,6 @@ import org.berendeev.roma.productfilter.domain.entity.Product;
 
 import java.util.List;
 
-public interface TextFilter {
+public interface ProductsFilter {
     List<Product> filter (List<Product> source, String filter);
 }
