@@ -8,6 +8,7 @@ import android.text.TextWatcher;
 import android.view.View;
 import android.widget.EditText;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import com.google.gson.Gson;
@@ -36,6 +37,7 @@ public class MainActivity extends AppCompatActivity {
     @BindView(R.id.recycler_view) RecyclerView recyclerView;
     @BindView(R.id.clear_button) ImageButton clearButton;
     @BindView(R.id.hint) TextView hint;
+    @BindView(R.id.dictionary) LinearLayout dictionary;
     private StringAdapter adapter;
     private List<Product> productList;
     private ProductsFilter productsFilter;
@@ -53,10 +55,19 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(layoutManager);
 
         initFilter();
-        setList(productList);
+//        setList(productList);
         initClearButton();
+        initDictionaryButton();
+//        hideHint();
+    }
 
-        hideHint();
+    private void initDictionaryButton() {
+        dictionary.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                hideHint();
+                setList(productList);
+            }
+        });
     }
 
     private void initClearButton() {
@@ -108,9 +119,11 @@ public class MainActivity extends AppCompatActivity {
 
     private void showHint(){
         hint.setVisibility(VISIBLE);
+        dictionary.setVisibility(VISIBLE);
     }
 
     private void hideHint(){
         hint.setVisibility(GONE);
+        dictionary.setVisibility(GONE);
     }
 }

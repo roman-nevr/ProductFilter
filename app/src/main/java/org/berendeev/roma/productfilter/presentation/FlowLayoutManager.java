@@ -199,7 +199,7 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager{
         Point nextPoint = new Point(getPaddingLeft(), bottomViewDecoratedBottom());
         if(nextPoint.y < getBottomBorder()){
             nextPoint = fillDownFrom(adapterPosition, nextPoint, recycler);
-            if (nextPoint.y < getBottomBorder()){
+            if (nextPoint.y < getBottomBorder() && bottomViewAdapterPosition() == getItemCount() - 1){
                 return getBottomBorder() - nextPoint.y;
             }else {
                 return 0;
@@ -215,7 +215,7 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager{
         Point nextPoint = getTopRightPoint(getChildAt(0));
         if (nextPoint.y > getTopBorder()){
             nextPoint = fillUpFrom(adapterPosition - 1, nextPoint, recycler);
-            if (nextPoint.y > getTopBorder()){
+            if (nextPoint.y > getTopBorder() && topViewAdapterPosition() == 0){
                 return getTopBorder() - nextPoint.y;
             }else {
                 return 0;
@@ -249,6 +249,10 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager{
         return getPosition(getChildAt(getChildCount() - 1));
     }
 
+    private int topViewAdapterPosition(){
+        return getPosition(getChildAt(0));
+    }
+
     private int getRightBorder() {
         return getWidth() - getPaddingRight();
     }
@@ -280,4 +284,6 @@ public class FlowLayoutManager extends RecyclerView.LayoutManager{
     private Point getTopRightPoint(View view){
         return new Point(getDecoratedRight(view), getDecoratedTop(view));
     }
+
+
 }
